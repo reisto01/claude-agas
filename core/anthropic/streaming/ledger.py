@@ -444,6 +444,7 @@ class AnthropicStreamLedger:
             state = self._content_blocks.get(idx)
             if state is not None:
                 state.open = False
+                self._clear_active_content_block(state)
             yield self._emitter.event(
                 "content_block_stop",
                 {"type": "content_block_stop", "index": idx},
@@ -612,11 +613,15 @@ class AnthropicStreamLedger:
                 extra_content if isinstance(extra_content, dict) else None
             )
         elif block_type == "text":
+            self.blocks.text_index = index
+            self.blocks.text_started = True
             text = block.get("text")
             if isinstance(text, str) and text:
                 state.parts.append(text)
                 self._text_parts.append(text)
         elif block_type == "thinking":
+            self.blocks.thinking_index = index
+            self.blocks.thinking_started = True
             thinking = block.get("thinking")
             if isinstance(thinking, str) and thinking:
                 state.parts.append(thinking)
@@ -652,6 +657,7 @@ class AnthropicStreamLedger:
         state = self._content_blocks.get(index)
         if state is not None:
             state.open = False
+            self._clear_active_content_block(state)
 
     def _last_open_block(self, block_type: str) -> StreamBlockState | None:
         for index in reversed(self._open_stack):
@@ -659,6 +665,14 @@ class AnthropicStreamLedger:
             if block is not None and block.block_type == block_type and block.open:
                 return block
         return None
+
+    def _clear_active_content_block(self, state: StreamBlockState) -> None:
+        if state.block_type == "text" and self.blocks.text_index == state.index:
+            self.blocks.text_started = False
+        elif (
+            state.block_type == "thinking" and self.blocks.thinking_index == state.index
+        ):
+            self.blocks.thinking_started = False
 
 
 def _normalize_task_run_in_background(args_json: dict[str, Any]) -> None:

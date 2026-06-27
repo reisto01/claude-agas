@@ -421,7 +421,7 @@ async def test_native_text_recovery_closes_thinking_before_text_suffix():
         "collect_text",
         new_callable=AsyncMock,
         return_value=("answer", "thinking more"),
-    ):
+    ) as mock_collect:
         events = await recovery.events(
             body={"messages": []},
             request=MockRequest(),
@@ -433,6 +433,9 @@ async def test_native_text_recovery_closes_thinking_before_text_suffix():
         )
 
     assert events is not None
+    assert mock_collect.await_args is not None
+    recovery_body = mock_collect.await_args.args[0]
+    assert "thinking" in recovery_body["messages"][-1]["content"]
     parsed = parse_sse_text("".join(events))
     assert [event.event for event in parsed] == [
         "content_block_delta",
@@ -660,6 +663,66 @@ async def test_native_recovery_collect_text_accepts_message_stop(provider_config
         )
 
     assert result == ("world", "")
+
+
+@pytest.mark.asyncio
+async def test_native_recovery_collect_text_reads_eager_start_content(provider_config):
+    """Native recovery reads text/thinking carried on content_block_start."""
+    provider = NativeProvider(provider_config)
+    text_start = format_sse_event(
+        "content_block_start",
+        {
+            "type": "content_block_start",
+            "index": 0,
+            "content_block": {"type": "text", "text": "hello"},
+        },
+    )
+    thinking_start = format_sse_event(
+        "content_block_start",
+        {
+            "type": "content_block_start",
+            "index": 1,
+            "content_block": {"type": "thinking", "thinking": "step"},
+        },
+    )
+    text_delta = format_sse_event(
+        "content_block_delta",
+        {
+            "type": "content_block_delta",
+            "index": 0,
+            "delta": {"type": "text_delta", "text": " world"},
+        },
+    )
+    thinking_delta = format_sse_event(
+        "content_block_delta",
+        {
+            "type": "content_block_delta",
+            "index": 1,
+            "delta": {"type": "thinking_delta", "thinking": " two"},
+        },
+    )
+    message_stop = format_sse_event("message_stop", {"type": "message_stop"})
+
+    async def _iter_chunks(_response, *, state, thinking_enabled):
+        yield text_start
+        yield thinking_start
+        yield text_delta
+        yield thinking_delta
+        yield message_stop
+
+    recovery = AnthropicMessagesRecovery(provider, iter_stream_chunks=_iter_chunks)
+
+    with patch.object(
+        provider,
+        "_validated_stream_send",
+        new_callable=AsyncMock,
+        return_value=FakeResponse(),
+    ):
+        result = await recovery.collect_text(
+            {"messages": []}, req_tag="", thinking_enabled=True
+        )
+
+    assert result == ("hello world", "step two")
 
 
 @pytest.mark.asyncio

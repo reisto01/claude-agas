@@ -410,6 +410,84 @@ class TestAnthropicStreamLedgerHighLevelHelpers:
             if event.event == "content_block_stop"
         ] == [1]
 
+    def test_text_suffix_appends_to_open_native_block(self):
+        builder = AnthropicStreamLedger("msg_1", "model")
+        builder.ingest_native_event(
+            SSEEvent(
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": 0,
+                    "content_block": {"type": "text", "text": ""},
+                },
+                "",
+            )
+        )
+        builder.ingest_native_event(
+            SSEEvent(
+                "content_block_delta",
+                {
+                    "type": "content_block_delta",
+                    "index": 0,
+                    "delta": {"type": "text_delta", "text": "hello wor"},
+                },
+                "",
+            )
+        )
+
+        events = list(builder.append_text_suffix("ld"))
+        events.extend(builder.success_tail("end_turn"))
+        parsed = parse_sse_text("".join(events))
+
+        assert [event.event for event in parsed] == [
+            "content_block_delta",
+            "content_block_stop",
+            "message_delta",
+            "message_stop",
+        ]
+        assert parsed[0].data["index"] == 0
+        assert parsed[0].data["delta"]["text"] == "ld"
+        assert parsed[1].data["index"] == 0
+
+    def test_thinking_suffix_appends_to_open_native_block(self):
+        builder = AnthropicStreamLedger("msg_1", "model")
+        builder.ingest_native_event(
+            SSEEvent(
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": 0,
+                    "content_block": {"type": "thinking", "thinking": ""},
+                },
+                "",
+            )
+        )
+        builder.ingest_native_event(
+            SSEEvent(
+                "content_block_delta",
+                {
+                    "type": "content_block_delta",
+                    "index": 0,
+                    "delta": {"type": "thinking_delta", "thinking": "step o"},
+                },
+                "",
+            )
+        )
+
+        events = list(builder.append_thinking_suffix("ne"))
+        events.extend(builder.success_tail("end_turn"))
+        parsed = parse_sse_text("".join(events))
+
+        assert [event.event for event in parsed] == [
+            "content_block_delta",
+            "content_block_stop",
+            "message_delta",
+            "message_stop",
+        ]
+        assert parsed[0].data["index"] == 0
+        assert parsed[0].data["delta"]["thinking"] == "ne"
+        assert parsed[1].data["index"] == 0
+
     def test_suffix_helpers_noop_after_message_delta(self):
         builder = AnthropicStreamLedger("msg_1", "model")
         builder.start_text_block()

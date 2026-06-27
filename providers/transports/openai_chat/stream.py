@@ -23,6 +23,7 @@ from core.anthropic.streaming import (
 )
 from core.trace import provider_chat_body_snapshot, trace_event
 from providers.error_mapping import map_error
+from providers.transports.http import maybe_await_aclose
 
 from .recovery import OpenAIChatRecovery
 from .tool_calls import (
@@ -107,6 +108,7 @@ class OpenAIChatStreamAdapter:
                 if not ledger.message_started:
                     for event in hold_event(ledger.message_start()):
                         yield event
+                stream: Any | None = None
                 stream_opened = False
                 try:
                     stream, body = await self._transport._create_stream(body)
@@ -291,6 +293,9 @@ class OpenAIChatStreamAdapter:
                     for event in self._recovery.emit_error_tail(ledger, error_message):
                         yield event
                     return
+                finally:
+                    if stream is not None:
+                        await maybe_await_aclose(stream)
 
         remaining = think_parser.flush()
         if remaining:

@@ -132,7 +132,7 @@ class OpenAIChatRecovery:
         if not partial_text and not partial_thinking:
             return None
 
-        recovery_body = make_text_recovery_body(body, partial_text)
+        recovery_body = make_text_recovery_body(body, partial_text, partial_thinking)
         text, thinking = await self.collect_text(recovery_body)
         text_suffix = continuation_suffix(partial_text, text)
         thinking_suffix = continuation_suffix(partial_thinking, thinking)

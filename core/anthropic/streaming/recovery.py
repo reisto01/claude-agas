@@ -27,6 +27,9 @@ _RECOVERY_USER_PREFIX = (
     "The previous provider stream was interrupted. Continue the assistant response "
     "exactly where it stopped. Do not repeat text already written."
 )
+_RECOVERY_THINKING_PREFIX = (
+    "The assistant had already emitted this hidden thinking before the interruption:\n"
+)
 
 
 class TruncatedProviderStreamError(RuntimeError):
@@ -336,16 +339,23 @@ def continuation_suffix(existing: str, candidate: str) -> str | None:
     return None
 
 
-def make_text_recovery_body(body: dict[str, Any], partial: str) -> dict[str, Any]:
+def make_text_recovery_body(
+    body: dict[str, Any],
+    partial_text: str,
+    partial_thinking: str = "",
+) -> dict[str, Any]:
     """Build a text-only continuation request for either transport family."""
     recovery = deepcopy(body)
     recovery.pop("tools", None)
     recovery.pop("tool_choice", None)
     recovery["stream"] = True
     messages = _copied_messages(recovery)
-    if partial:
-        messages.append({"role": "assistant", "content": partial})
-    messages.append({"role": "user", "content": _RECOVERY_USER_PREFIX})
+    if partial_text:
+        messages.append({"role": "assistant", "content": partial_text})
+    prompt = _RECOVERY_USER_PREFIX
+    if partial_thinking:
+        prompt = f"{_RECOVERY_THINKING_PREFIX}{partial_thinking}\n\n{prompt}"
+    messages.append({"role": "user", "content": prompt})
     recovery["messages"] = messages
     return recovery
 

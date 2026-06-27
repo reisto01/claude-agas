@@ -72,6 +72,14 @@ class AnthropicMessagesRecovery:
                 for event in parse_sse_text("".join(chunks)):
                     if event.event == "message_stop":
                         terminal_seen = True
+                    content_block = event.data.get("content_block")
+                    if isinstance(content_block, dict):
+                        text = content_block.get("text")
+                        if isinstance(text, str):
+                            text_parts.append(text)
+                        thinking = content_block.get("thinking")
+                        if isinstance(thinking, str):
+                            thinking_parts.append(thinking)
                     delta = event.data.get("delta")
                     if not isinstance(delta, dict):
                         continue
@@ -189,7 +197,7 @@ class AnthropicMessagesRecovery:
             return None
         if not ledger.can_append_content():
             return None
-        recovery_body = make_text_recovery_body(body, partial_text)
+        recovery_body = make_text_recovery_body(body, partial_text, partial_thinking)
         text, thinking = await self.collect_text(
             recovery_body,
             req_tag=req_tag,

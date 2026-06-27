@@ -15,7 +15,9 @@ from core.anthropic.stream_contracts import (
 )
 from core.anthropic.streaming import (
     MIDSTREAM_RECOVERY_ATTEMPTS,
+    AnthropicStreamLedger,
     TruncatedProviderStreamError,
+    make_text_recovery_body,
 )
 from providers.base import ProviderConfig
 from providers.nvidia_nim import NvidiaNimProvider
@@ -836,6 +838,85 @@ class TestStreamingExceptionHandling:
 
         assert await recovery.collect_text({"messages": []}) == ("world", "")
         assert stream.closed is True
+
+    def test_text_recovery_body_preserves_thinking_context(self):
+        """Continuation prompts include emitted thinking without provider-specific fields."""
+        body = {
+            "messages": [{"role": "user", "content": "hello"}],
+            "tools": [{"name": "Read"}],
+            "tool_choice": {"type": "auto"},
+        }
+
+        recovery_body = make_text_recovery_body(
+            body,
+            partial_text="visible answer",
+            partial_thinking="hidden reasoning",
+        )
+
+        assert "tools" not in recovery_body
+        assert "tool_choice" not in recovery_body
+        assert recovery_body["messages"][-2] == {
+            "role": "assistant",
+            "content": "visible answer",
+        }
+        recovery_prompt = recovery_body["messages"][-1]
+        assert recovery_prompt["role"] == "user"
+        assert "hidden reasoning" in recovery_prompt["content"]
+        assert "reasoning_content" not in recovery_prompt
+
+    @pytest.mark.asyncio
+    async def test_openai_text_recovery_passes_thinking_context(self):
+        """OpenAI-chat recovery call sites seed emitted thinking in the prompt."""
+        recovery = OpenAIChatRecovery(
+            provider_name="NIM",
+            create_stream=AsyncMock(),
+        )
+        ledger = AnthropicStreamLedger("msg_recovery", "model")
+        ledger.start_thinking_block()
+        ledger.emit_thinking_delta("hidden reasoning")
+        list(ledger.ensure_text_block())
+        ledger.emit_text_delta("visible answer")
+
+        with patch.object(
+            recovery,
+            "collect_text",
+            new_callable=AsyncMock,
+            return_value=("visible answer done", "hidden reasoning more"),
+        ) as mock_collect:
+            events = await recovery.events(
+                body={"messages": [{"role": "user", "content": "hello"}]},
+                ledger=ledger,
+                request=_make_request(),
+                request_id="req_recovery",
+                error=TimeoutError("cutoff"),
+                tool_argument_alias_buffers={},
+            )
+
+        assert events is not None
+        assert mock_collect.await_args is not None
+        recovery_body = mock_collect.await_args.args[0]
+        assert "hidden reasoning" in recovery_body["messages"][-1]["content"]
+
+    @pytest.mark.asyncio
+    async def test_primary_stream_closes_when_iteration_fails(self):
+        """OpenAI-chat main streams close after iterator failures."""
+        provider = _make_provider()
+        request = _make_request()
+        stream = ClosableAsyncStreamMock(
+            [_make_chunk(content="partial")],
+            error=ValueError("provider stream failed"),
+        )
+
+        with patch.object(
+            provider._client.chat.completions,
+            "create",
+            new_callable=AsyncMock,
+            return_value=stream,
+        ):
+            events = await _collect_stream(provider, request)
+
+        assert stream.closed is True
+        assert "provider stream failed" in "".join(events).lower()
 
     @pytest.mark.asyncio
     async def test_truncated_recovery_stream_falls_back_to_error_tail(self):
