@@ -7,9 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from starlette.types import Receive, Scope, Send
 
@@ -97,6 +99,14 @@ def create_app(*, lifespan_enabled: bool = True) -> FastAPI:
     if lifespan_enabled:
         app_kwargs["lifespan"] = lifespan
     app = FastAPI(**app_kwargs)
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def trace_http_correlation(request: Request, call_next):
@@ -113,6 +123,11 @@ def create_app(*, lifespan_enabled: bool = True) -> FastAPI:
     # Register routes
     app.include_router(admin_router)
     app.include_router(router)
+
+    # Mount static frontend
+    public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+    if os.path.isdir(public_dir):
+        app.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
 
     # Exception handlers
     @app.exception_handler(RequestValidationError)

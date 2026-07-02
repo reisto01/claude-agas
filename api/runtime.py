@@ -246,7 +246,11 @@ class AppRuntime:
         api_url = f"http://{self.settings.host}:{self.settings.port}/v1"
         allowed_dirs = [workspace] if self.settings.allowed_dir else []
         plans_dir_abs = os.path.abspath(os.path.join(data_path, "plans"))
-        plans_directory = os.path.relpath(plans_dir_abs, workspace)
+        try:
+            plans_directory = os.path.relpath(plans_dir_abs, workspace)
+        except ValueError:
+            # Fallback to absolute path on Windows if drives are different
+            plans_directory = plans_dir_abs
         self.cli_manager = ManagedClaudeSessionManager(
             workspace_path=workspace,
             api_url=api_url,

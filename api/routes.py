@@ -175,3 +175,33 @@ async def stop_cli(request: Request, _auth=Depends(require_api_key)):
     )
     logger.info("STOP_CLI: source=messaging_workflow cancelled_count={}", count)
     return {"status": "stopped", "cancelled_count": count}
+
+# =============================================================================
+# Web Socket Chat Route
+# =============================================================================
+from fastapi import WebSocket, WebSocketDisconnect
+
+@router.websocket("/v1/ws/chat")
+async def websocket_chat(websocket: WebSocket):
+    """WebSocket endpoint for the local web platform."""
+    from messaging.platforms.web import web_manager, web_runtime_instance
+    import uuid
+    import json
+    
+    chat_id = str(uuid.uuid4())
+    await web_manager.connect(chat_id, websocket)
+    logger.info(f"Web client connected: {chat_id}")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                payload = json.loads(data)
+                text = payload.get("text", "")
+                if text:
+                    await web_runtime_instance.trigger_message(chat_id, text)
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON received from web client: {data}")
+    except WebSocketDisconnect:
+        web_manager.disconnect(chat_id)
+        logger.info(f"Web client disconnected: {chat_id}")
+

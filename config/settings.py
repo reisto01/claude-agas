@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     cerebras_api_key: str = Field(default="", validation_alias="CEREBRAS_API_KEY")
 
     # ==================== Messaging Platform Selection ====================
-    # Valid: "telegram" | "discord" | "none"
+    # Valid: "telegram" | "discord" | "none" | "web"
     messaging_platform: str = Field(
         default="discord", validation_alias="MESSAGING_PLATFORM"
     )
@@ -293,9 +293,9 @@ class Settings(BaseSettings):
     @field_validator("messaging_platform")
     @classmethod
     def validate_messaging_platform(cls, v: str) -> str:
-        if v not in ("telegram", "discord", "none"):
+        if v not in ("telegram", "discord", "none", "web"):
             raise ValueError(
-                f"messaging_platform must be 'telegram', 'discord', or 'none', got {v!r}"
+                f"messaging_platform must be 'telegram', 'discord', 'none', or 'web', got {v!r}"
             )
         return v
 

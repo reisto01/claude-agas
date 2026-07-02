@@ -93,9 +93,19 @@ def create_messaging_components(
             outbound=runtime.outbound,
             voice_cancellation=runtime,
         )
+        
+    if platform_type == "web":
+        from .web import web_runtime_instance
+        
+        return MessagingPlatformComponents(
+            name=web_runtime_instance.name,
+            runtime=web_runtime_instance,
+            outbound=web_runtime_instance.outbound,
+            voice_cancellation=None,
+        )
 
     logger.warning(
-        "Unknown messaging platform: '{}'. Supported: 'none', 'telegram', 'discord'",
+        "Unknown messaging platform: '{}'. Supported: 'none', 'telegram', 'discord', 'web'",
         platform_type,
     )
     return None

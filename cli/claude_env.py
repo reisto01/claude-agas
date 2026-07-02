@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import sys
+
 CLAUDE_CODE_AUTO_COMPACT_WINDOW = "190000"
-CLAUDE_BINARY_NAME = "claude"
+CLAUDE_BINARY_NAME = "claude.cmd" if sys.platform == "win32" else "claude"
 CLAUDE_NO_AUTH_SENTINEL = "fcc-no-auth"
 
 
