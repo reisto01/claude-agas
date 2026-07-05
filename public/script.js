@@ -248,11 +248,17 @@ function loadSession(sessionId, chatData) {
         msgDiv.className = `message ${msg.role}`;
         msgDiv.id = `msg-${msg.id}`;
         
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        
         if (msg.role === 'assistant') {
-            msgDiv.innerHTML = parseMarkdown(msg.text);
+            contentDiv.innerHTML = parseMarkdown(msg.text);
         } else {
-            msgDiv.textContent = msg.text;
+            contentDiv.textContent = msg.text;
         }
+        
+        msgDiv.appendChild(contentDiv);
+        msgDiv.appendChild(createCopyButton());
         
         chatHistory.appendChild(msgDiv);
         messages[msg.id] = msgDiv;
@@ -340,8 +346,12 @@ function handleServerMessage(data) {
         msgDiv.className = 'message assistant';
         msgDiv.id = `msg-${data.id}`;
         
-        // Simple markdown parsing for the chat view (using innerHTML for simplicity in this demo)
-        msgDiv.innerHTML = parseMarkdown(data.text);
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = parseMarkdown(data.text);
+        
+        msgDiv.appendChild(contentDiv);
+        msgDiv.appendChild(createCopyButton());
         
         chatHistory.appendChild(msgDiv);
         messages[data.id] = msgDiv;
@@ -352,7 +362,8 @@ function handleServerMessage(data) {
         
         const msgDiv = messages[data.id];
         if (msgDiv) {
-            msgDiv.innerHTML = parseMarkdown(data.text);
+            const contentDiv = msgDiv.querySelector('.message-content') || msgDiv;
+            contentDiv.innerHTML = parseMarkdown(data.text);
             scrollToBottom();
         }
     } else if (data.type === 'delete') {
@@ -439,7 +450,14 @@ function sendMessage() {
     // Add user message to UI
     const userMsgDiv = document.createElement('div');
     userMsgDiv.className = 'message user';
-    userMsgDiv.textContent = text;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = text;
+    
+    userMsgDiv.appendChild(contentDiv);
+    userMsgDiv.appendChild(createCopyButton());
+    
     chatHistory.appendChild(userMsgDiv);
     
     // Clear input
@@ -539,4 +557,20 @@ if ('serviceWorker' in navigator) {
             .then(reg => console.log('Service Worker registered', reg))
             .catch(err => console.error('Service Worker registration failed', err));
     });
+}
+
+function createCopyButton() {
+    const btn = document.createElement('button');
+    btn.className = 'copy-msg-btn';
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy`;
+    btn.addEventListener('click', function() {
+        const contentDiv = this.parentElement.querySelector('.message-content');
+        if (contentDiv) {
+            navigator.clipboard.writeText(contentDiv.innerText || contentDiv.textContent);
+            const originalHtml = this.innerHTML;
+            this.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+            setTimeout(() => this.innerHTML = originalHtml, 2000);
+        }
+    });
+    return btn;
 }
