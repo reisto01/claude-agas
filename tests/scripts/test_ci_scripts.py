@@ -208,6 +208,8 @@ def test_ci_ps1_dry_run_does_not_require_uv() -> None:
         [
             _powershell_interpreter(),
             "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
             "-File",
             str(_repo_root() / "scripts" / "ci.ps1"),
             "-Only",
@@ -240,6 +242,8 @@ def test_ci_ps1_dry_run_prints_local_ruff_repair_commands(
         [
             _powershell_interpreter(),
             "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
             "-File",
             str(_repo_root() / "scripts" / "ci.ps1"),
             "-Only",
@@ -263,6 +267,8 @@ def test_ci_ps1_suppression_only_does_not_require_uv() -> None:
         [
             _powershell_interpreter(),
             "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
             "-File",
             str(_repo_root() / "scripts" / "ci.ps1"),
             "-Only",

@@ -304,7 +304,14 @@ def test_uninstall_ps1_generic_uv_failure_does_not_delete_fcc_home(
     )
 
     result = subprocess.run(
-        [pwsh, "-NoProfile", "-File", str(_repo_root() / "scripts" / "uninstall.ps1")],
+        [
+            pwsh,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(_repo_root() / "scripts" / "uninstall.ps1"),
+        ],
         cwd=_repo_root(),
         env={
             **os.environ,
@@ -340,7 +347,14 @@ def test_uninstall_ps1_missing_tool_still_deletes_fcc_home(tmp_path: Path) -> No
     )
 
     result = subprocess.run(
-        [pwsh, "-NoProfile", "-File", str(_repo_root() / "scripts" / "uninstall.ps1")],
+        [
+            pwsh,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(_repo_root() / "scripts" / "uninstall.ps1"),
+        ],
         cwd=_repo_root(),
         env={
             **os.environ,
@@ -369,7 +383,14 @@ def test_uninstall_ps1_missing_uv_still_deletes_fcc_home(tmp_path: Path) -> None
     empty_bin.mkdir()
 
     result = subprocess.run(
-        [pwsh, "-NoProfile", "-File", str(_repo_root() / "scripts" / "uninstall.ps1")],
+        [
+            pwsh,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(_repo_root() / "scripts" / "uninstall.ps1"),
+        ],
         cwd=_repo_root(),
         env={
             **os.environ,
