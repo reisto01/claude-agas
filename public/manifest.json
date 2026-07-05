@@ -1,0 +1,17 @@
+{
+  "name": "Claude - Hai, Agas",
+  "short_name": "Claude",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1a1917",
+  "theme_color": "#D97757",
+  "description": "Premium Claude Code Interface",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

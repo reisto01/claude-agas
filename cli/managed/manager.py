@@ -1,6 +1,9 @@
 """Managed Claude Code session pool for messaging."""
 
 import asyncio
+import os
+import shutil
+import sys
 import uuid
 
 from loguru import logger
@@ -43,7 +46,17 @@ class ManagedClaudeSessionManager:
         self.api_url = api_url
         self.allowed_dirs = allowed_dirs or []
         self.plans_directory = plans_directory
-        self.claude_bin = claude_bin
+
+        resolved_bin = shutil.which(claude_bin)
+        if not resolved_bin and sys.platform == "win32":
+            npm_fallback = os.path.expanduser(r"~\AppData\Roaming\npm")
+            if claude_bin.endswith(".cmd"):
+                fallback_path = os.path.join(npm_fallback, claude_bin)
+                if os.path.exists(fallback_path):
+                    resolved_bin = fallback_path
+
+        self.claude_bin = resolved_bin or claude_bin
+
         self.auth_token = auth_token
         self._log_raw_cli_diagnostics = log_raw_cli_diagnostics
         self._log_messaging_error_details = log_messaging_error_details

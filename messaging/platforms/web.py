@@ -1,13 +1,12 @@
 """Web socket messaging platform integration."""
 
 import asyncio
-import json
 import uuid
 from collections.abc import Awaitable
 from typing import Any
 
+from fastapi import WebSocket
 from loguru import logger
-from fastapi import WebSocket, WebSocketDisconnect
 
 from ..models import IncomingMessage
 from .ports import InboundMessageHandler, MessagingRuntime, OutboundMessenger
@@ -15,7 +14,7 @@ from .ports import InboundMessageHandler, MessagingRuntime, OutboundMessenger
 
 class WebConnectionManager:
     """Manages active websocket connections for chat."""
-    
+
     def __init__(self) -> None:
         self.active_connections: dict[str, WebSocket] = {}
 
@@ -50,11 +49,14 @@ class WebOutboundMessenger(OutboundMessenger):
         message_thread_id: str | None = None,
     ) -> str | None:
         msg_id = str(uuid.uuid4())
-        await web_manager.send_message(chat_id, {
-            "type": "message",
-            "id": msg_id,
-            "text": text,
-        })
+        await web_manager.send_message(
+            chat_id,
+            {
+                "type": "message",
+                "id": msg_id,
+                "text": text,
+            },
+        )
         return msg_id
 
     async def queue_edit_message(
@@ -65,11 +67,14 @@ class WebOutboundMessenger(OutboundMessenger):
         parse_mode: str | None = None,
         fire_and_forget: bool = True,
     ) -> None:
-        await web_manager.send_message(chat_id, {
-            "type": "edit",
-            "id": message_id,
-            "text": text,
-        })
+        await web_manager.send_message(
+            chat_id,
+            {
+                "type": "edit",
+                "id": message_id,
+                "text": text,
+            },
+        )
 
     async def queue_delete_message(
         self,
@@ -77,10 +82,13 @@ class WebOutboundMessenger(OutboundMessenger):
         message_id: str,
         fire_and_forget: bool = True,
     ) -> None:
-        await web_manager.send_message(chat_id, {
-            "type": "delete",
-            "id": message_id,
-        })
+        await web_manager.send_message(
+            chat_id,
+            {
+                "type": "delete",
+                "id": message_id,
+            },
+        )
 
     async def queue_delete_messages(
         self,
@@ -92,7 +100,10 @@ class WebOutboundMessenger(OutboundMessenger):
             await self.queue_delete_message(chat_id, mid, fire_and_forget)
 
     def fire_and_forget(self, task: Awaitable[Any]) -> None:
-        asyncio.create_task(task)
+        if asyncio.iscoroutine(task):
+            asyncio.create_task(task)
+        else:
+            asyncio.ensure_future(task)
 
 
 class WebRuntime(MessagingRuntime):
@@ -128,7 +139,7 @@ class WebRuntime(MessagingRuntime):
         try:
             print(f"[DEBUG] trigger_message called with {text}", flush=True)
             if self._handler:
-                print(f"[DEBUG] Handler is set, creating IncomingMessage...", flush=True)
+                print("[DEBUG] Handler is set, creating IncomingMessage...", flush=True)
                 msg = IncomingMessage(
                     text=text,
                     chat_id=chat_id,
@@ -136,13 +147,14 @@ class WebRuntime(MessagingRuntime):
                     message_id=str(uuid.uuid4()),
                     platform="web",
                 )
-                print(f"[DEBUG] Awaiting handler...", flush=True)
+                print("[DEBUG] Awaiting handler...", flush=True)
                 await self._handler(msg)
             else:
                 logger.warning("No handler registered for incoming web messages.")
         except Exception as e:
             logger.error(f"Error handling message: {e}")
             import traceback
+
             traceback.print_exc()
 
 

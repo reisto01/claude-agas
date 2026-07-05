@@ -152,6 +152,9 @@ def test_create_app_provider_error_handler_returns_anthropic_format():
     async def _raise_provider():
         raise AuthenticationError("bad key")
 
+    # Move route to front so it's evaluated before the StaticFiles catch-all
+    app.router.routes.insert(0, app.router.routes.pop())
+
     api_app_mod = importlib.import_module("api.app")
     settings = _app_settings(
         messaging_platform="telegram",
@@ -187,6 +190,8 @@ def test_create_app_provider_error_default_logs_exclude_provider_message():
     @app.get("/raise_provider_secret")
     async def _raise():
         raise AuthenticationError(secret)
+
+    app.router.routes.insert(0, app.router.routes.pop())
 
     api_app_mod = importlib.import_module("api.app")
     settings = _app_settings(
@@ -225,6 +230,8 @@ def test_create_app_general_exception_handler_returns_500():
     async def _raise_general():
         raise RuntimeError("boom")
 
+    app.router.routes.insert(0, app.router.routes.pop())
+
     api_app_mod = importlib.import_module("api.app")
     settings = _app_settings(
         messaging_platform="telegram",
@@ -260,6 +267,8 @@ def test_create_app_general_exception_default_logs_exclude_exception_message():
     @app.get("/raise_secret")
     async def _raise_secret():
         raise ValueError(secret)
+
+    app.router.routes.insert(0, app.router.routes.pop())
 
     api_app_mod = importlib.import_module("api.app")
     settings = _app_settings(

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Test</title>
+    <script src="./public/firebase-app-compat.js"></script>
+    <script src="./public/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="result">Waiting for test...</div>
+    <script>
+        // Firebase configuration (same as in script.js)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC32jU6h1JR9D3J2Lrw8a2J8kW9BJ9kwi4",
+            authDomain: "claude-code-1f106.firebaseapp.com",
+            projectId: "claude-code-1f106",
+            storageBucket: "claude-code-1f106.firebasestorage.app",
+            messagingSenderId: "1013459219670",
+            appId: "1:1013459219670:web:21804e2a9340ebf1ef4577",
+            measurementId: "G-XXDKNXVX9W"
+        };
+
+        // Initialize Firebase
+        let db;
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.firestore();
+            document.getElementById('result').textContent = 'Firebase initialized successfully.';
+        } catch (e) {
+            document.getElementById('result').textContent = 'Firebase initialization failed: ' + e.message;
+            console.error(e);
+            return;
+        }
+
+        // Test writing a document
+        const testCollection = db.collection('test-firebase-connection');
+        const testDoc = testCollection.doc();
+
+        testDoc.set({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            test: 'Connection test',
+            random: Math.random()
+        })
+        .then(() => {
+            document.getElementById('result').textContent += '\nDocument written successfully.';
+            // Read the document back
+            return testDoc.get();
+        })
+        .then((doc) => {
+            if (doc.exists) {
+                document.getElementById('result').textContent += '\nDocument read successfully.';
+                // Delete the document
+                return testDoc.delete();
+            } else {
+                throw new Error('Document does not exist after write.');
+            }
+        })
+        .then(() => {
+            document.getElementById('result').textContent += '\nDocument cleaned up successfully.';
+            document.getElementById('result').textContent += '\n\nFirebase test PASSED!';
+        })
+        .catch((error) => {
+            document.getElementById('result').textContent += '\nError during Firestore operation: ' + error.message;
+            console.error(error);
+            document.getElementById('result').textContent += '\n\nFirebase test FAILED!';
+        });
+    </script>
+</body>
+</html>

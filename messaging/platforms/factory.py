@@ -93,10 +93,10 @@ def create_messaging_components(
             outbound=runtime.outbound,
             voice_cancellation=runtime,
         )
-        
+
     if platform_type == "web":
         from .web import web_runtime_instance
-        
+
         return MessagingPlatformComponents(
             name=web_runtime_instance.name,
             runtime=web_runtime_instance,

@@ -1,9 +1,16 @@
 """FastAPI route handlers."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from loguru import logger
 
-from config.model_refs import parse_provider_type
 from config.settings import Settings
 from core.anthropic import get_token_count
 from core.trace import trace_event
@@ -111,22 +118,10 @@ async def probe_count_tokens(_auth=Depends(require_api_key)):
     return _probe_response("POST, HEAD, OPTIONS")
 
 
-@router.get("/")
-async def root(
-    settings: Settings = Depends(get_settings), _auth=Depends(require_api_key)
-):
-    """Root endpoint."""
-    return {
-        "status": "ok",
-        "provider": parse_provider_type(settings.model),
-        "model": settings.model,
-    }
-
-
 @router.api_route("/", methods=["HEAD", "OPTIONS"])
 async def probe_root():
     """Respond to unauthenticated local compatibility probes for the root endpoint."""
-    return _probe_response("GET, HEAD, OPTIONS")
+    return _probe_response("HEAD, OPTIONS")
 
 
 @router.get("/health")
@@ -176,18 +171,20 @@ async def stop_cli(request: Request, _auth=Depends(require_api_key)):
     logger.info("STOP_CLI: source=messaging_workflow cancelled_count={}", count)
     return {"status": "stopped", "cancelled_count": count}
 
+
 # =============================================================================
 # Web Socket Chat Route
 # =============================================================================
-from fastapi import WebSocket, WebSocketDisconnect
+
 
 @router.websocket("/v1/ws/chat")
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for the local web platform."""
-    from messaging.platforms.web import web_manager, web_runtime_instance
-    import uuid
     import json
-    
+    import uuid
+
+    from messaging.platforms.web import web_manager, web_runtime_instance
+
     chat_id = str(uuid.uuid4())
     await web_manager.connect(chat_id, websocket)
     logger.info(f"Web client connected: {chat_id}")
@@ -197,11 +194,18 @@ async def websocket_chat(websocket: WebSocket):
             try:
                 payload = json.loads(data)
                 text = payload.get("text", "")
-                if text:
+                command = payload.get("command", "")
+                if command == "stop":
+                    workflow = getattr(websocket.app.state, "messaging_workflow", None)
+                    if workflow:
+                        await workflow.stop_all_tasks()
+                    cli_manager = getattr(websocket.app.state, "cli_manager", None)
+                    if cli_manager:
+                        await cli_manager.stop_all()
+                elif text:
                     await web_runtime_instance.trigger_message(chat_id, text)
             except json.JSONDecodeError:
                 logger.warning(f"Invalid JSON received from web client: {data}")
     except WebSocketDisconnect:
         web_manager.disconnect(chat_id)
         logger.info(f"Web client disconnected: {chat_id}")
-
