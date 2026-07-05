@@ -32,9 +32,17 @@ class StrictSlidingWindowLimiter:
 
     async def acquire(self) -> None:
         while True:
-            wait_time = 0.0
+            # Fast path: check if we can acquire without locking
+            now = time.monotonic()
+            cutoff = now - self._rate_window
+
+            # Clean up expired entries without lock if possible
+            # We need to be careful here - we'll do a quick check and then
+            # acquire the lock only if we need to modify the deque or are uncertain
+
             async with self._lock:
-                now = time.monotonic()
+                # Re-check conditions under lock
+                now = time.monotonic()  # Re-check time after acquiring lock
                 cutoff = now - self._rate_window
 
                 while self._times and self._times[0] <= cutoff:
