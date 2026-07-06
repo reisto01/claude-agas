@@ -134,7 +134,7 @@ class WebRuntime(MessagingRuntime):
     def is_connected(self) -> bool:
         return True
 
-    async def trigger_message(self, chat_id: str, text: str) -> None:
+    async def trigger_message(self, chat_id: str, text: str, reply_to_message_id: str | None = None) -> None:
         """Route an incoming message from the websocket to the workflow."""
         try:
             print(f"[DEBUG] trigger_message called with {text}", flush=True)
@@ -146,6 +146,7 @@ class WebRuntime(MessagingRuntime):
                     user_id="web_user",
                     message_id=str(uuid.uuid4()),
                     platform="web",
+                    reply_to_message_id=reply_to_message_id,
                 )
                 print("[DEBUG] Awaiting handler...", flush=True)
                 await self._handler(msg)

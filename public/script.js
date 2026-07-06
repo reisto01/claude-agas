@@ -43,6 +43,7 @@ const suggestionChips = document.getElementById('suggestion-chips');
 let ws = null;
 let messages = {}; // Maps message_id to DOM element
 let currentSessionId = null; 
+let lastAssistantMessageId = null;
 
 let isGenerating = false;
 const sendIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
@@ -155,6 +156,7 @@ const newChatBtn = document.querySelector('.new-chat-btn');
 if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
         currentSessionId = null;
+        lastAssistantMessageId = null;
         chatHistory.innerHTML = '';
         chatHistory.style.display = 'none';
         document.querySelector('.chat-container').classList.remove('active-chat');
@@ -168,7 +170,7 @@ let isCreatingSession = false;
 let sessionCreationPromise = null;
 let saveTimeouts = {};
 
-async function saveSessionMessage(msgId, role, text, isEdit = false) {
+async function saveSessionMessage(msgId, role, text, isEdit = false, replyId = null) {
     if (!db) return;
     
     if (!currentSessionId) {
@@ -198,8 +200,10 @@ async function saveSessionMessage(msgId, role, text, isEdit = false) {
     // Function to actually write to Firestore
     const writeToDb = async () => {
         try {
+            const msgData = { role, text, timestamp: Date.now() };
+            if (replyId) msgData.replyId = replyId;
             await db.collection('chats').doc(currentSessionId).update({
-                [`messages.${msgId}`]: { role, text, timestamp: Date.now() }
+                [`messages.${msgId}`]: msgData
             });
         } catch (e) {
             console.error("Error saving message:", e);
@@ -285,10 +289,21 @@ function loadSession(sessionId, chatData) {
         return { id, ...chatData.messages[id] };
     }).sort((a, b) => a.timestamp - b.timestamp);
     
+    lastAssistantMessageId = null;
     msgArray.forEach(msg => {
+        if (msg.role === 'assistant') {
+            lastAssistantMessageId = msg.id;
+        }
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${msg.role}`;
         msgDiv.id = `msg-${msg.id}`;
+        
+        if (msg.replyId) {
+            const replyIndicator = document.createElement('div');
+            replyIndicator.className = 'reply-indicator';
+            replyIndicator.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg> Replying to previous message`;
+            msgDiv.appendChild(replyIndicator);
+        }
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
@@ -323,6 +338,11 @@ if (textarea) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
+        } else if (e.key === 'Enter' && e.shiftKey) {
+            setTimeout(() => {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            }, 0);
         }
     });
 }
@@ -381,6 +401,7 @@ function connectWebSocket() {
 function handleServerMessage(data) {
     if (data.type === 'message') {
         setGenerating(true);
+        lastAssistantMessageId = data.id;
         saveSessionMessage(data.id, 'assistant', data.text);
         
         // Create new assistant message block
@@ -487,11 +508,18 @@ function sendMessage() {
 
     // Save to Firestore
     const msgId = 'user-' + Date.now();
-    saveSessionMessage(msgId, 'user', text);
+    saveSessionMessage(msgId, 'user', text, false, lastAssistantMessageId);
 
     // Add user message to UI
     const userMsgDiv = document.createElement('div');
     userMsgDiv.className = 'message user';
+    
+    if (lastAssistantMessageId) {
+        const replyIndicator = document.createElement('div');
+        replyIndicator.className = 'reply-indicator';
+        replyIndicator.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg> Replying to previous message`;
+        userMsgDiv.appendChild(replyIndicator);
+    }
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -509,7 +537,11 @@ function sendMessage() {
 
     // Send to backend
     setGenerating(true);
-    ws.send(JSON.stringify({ text: text }));
+    const payload = { text: text };
+    if (lastAssistantMessageId) {
+        payload.reply_id = lastAssistantMessageId;
+    }
+    ws.send(JSON.stringify(payload));
 }
 
 function scrollToBottom() {

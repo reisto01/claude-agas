@@ -96,6 +96,19 @@ class MessagingTurnIntake:
                         f"Reply to {incoming.reply_to_message_id} found tree but no valid parent node"
                     )
                     tree = None
+            
+            if not tree or not parent_node_id:
+                logger.warning(f"Reply ID {reply_id} is invalid or missing tree. Rejecting message.")
+                error_msg = f"❌ **Error**: The message you are replying to could not be found or has expired. Please start a new conversation or reply to a more recent message."
+                await self.outbound.queue_send_message(
+                    incoming.chat_id,
+                    error_msg,
+                    reply_to=incoming.message_id,
+                    parse_mode=self._get_parse_mode(),
+                    fire_and_forget=False,
+                    message_thread_id=incoming.message_thread_id,
+                )
+                return
 
         node_id = incoming.message_id
         status_text = self._get_initial_status(tree, parent_node_id)

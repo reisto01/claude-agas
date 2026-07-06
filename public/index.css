@@ -317,6 +317,8 @@ textarea {
     resize: none;
     outline: none;
     padding: 4px 0;
+    max-height: 200px;
+    overflow-y: auto;
 }
 
 textarea::placeholder {
@@ -464,6 +466,8 @@ textarea::placeholder {
     max-width: 85%;
     line-height: 1.65;
     font-size: 15.5px;
+    position: relative;
+    margin-bottom: 24px;
 }
 
 .message.user {
@@ -476,6 +480,18 @@ textarea::placeholder {
     border-bottom-right-radius: 4px;
     color: var(--text-primary);
     box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.reply-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--glass-border);
+    opacity: 0.8;
 }
 
 .message.assistant {
@@ -601,7 +617,10 @@ textarea::placeholder {
 }
 
 .copy-msg-btn {
-    display: none;
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    bottom: -32px;
     align-items: center;
     gap: 6px;
     background: transparent;
@@ -609,15 +628,17 @@ textarea::placeholder {
     color: var(--text-secondary);
     font-size: 12px;
     cursor: pointer;
-    margin-top: 8px;
     padding: 6px 12px;
     border-radius: 6px;
     transition: all 0.2s ease;
-    align-self: flex-start;
 }
 
 .message.user .copy-msg-btn {
-    align-self: flex-end;
+    right: 0;
+}
+
+.message.assistant .copy-msg-btn {
+    left: 0;
 }
 
 .copy-msg-btn:hover {
@@ -626,7 +647,8 @@ textarea::placeholder {
 }
 
 .message:hover .copy-msg-btn {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
 }
 
 .drawer-search { padding: 10px 16px; border-bottom: 1px solid var(--border-color); }

@@ -195,6 +195,7 @@ async def websocket_chat(websocket: WebSocket):
                 payload = json.loads(data)
                 text = payload.get("text", "")
                 command = payload.get("command", "")
+                reply_id = payload.get("reply_id", None)
                 if command == "stop":
                     workflow = getattr(websocket.app.state, "messaging_workflow", None)
                     if workflow:
@@ -203,7 +204,7 @@ async def websocket_chat(websocket: WebSocket):
                     if cli_manager:
                         await cli_manager.stop_all()
                 elif text:
-                    await web_runtime_instance.trigger_message(chat_id, text)
+                    await web_runtime_instance.trigger_message(chat_id, text, reply_id)
             except json.JSONDecodeError:
                 logger.warning(f"Invalid JSON received from web client: {data}")
     except WebSocketDisconnect:
