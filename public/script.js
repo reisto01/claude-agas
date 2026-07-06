@@ -94,11 +94,53 @@ const historyBtn = document.getElementById('history-btn');
 const historyDrawer = document.getElementById('history-drawer');
 const closeDrawerBtn = document.getElementById('close-drawer-btn');
 const historyList = document.getElementById('history-list');
+const searchBtn = document.getElementById('search-btn');
+const historySearchInput = document.getElementById('history-search-input');
 
 if (historyBtn && historyDrawer) {
     historyBtn.addEventListener('click', () => {
         historyDrawer.classList.toggle('open');
         renderHistory();
+    });
+}
+
+if (searchBtn && historyDrawer) {
+    searchBtn.addEventListener('click', () => {
+        historyDrawer.classList.add('open');
+        renderHistory();
+        setTimeout(() => {
+            if (historySearchInput) historySearchInput.focus();
+        }, 100);
+    });
+}
+
+if (historySearchInput) {
+    historySearchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const items = historyList.querySelectorAll('.history-item');
+        let hasVisible = false;
+        items.forEach(item => {
+            if (item.textContent.toLowerCase().includes(term)) {
+                item.style.display = 'block';
+                hasVisible = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Handle empty state
+        let noResults = historyList.querySelector('.no-results-msg');
+        if (!hasVisible && items.length > 0) {
+            if (!noResults) {
+                noResults = document.createElement('div');
+                noResults.className = 'empty-history no-results-msg';
+                noResults.textContent = 'No matching chats found.';
+                historyList.appendChild(noResults);
+            }
+            noResults.style.display = 'block';
+        } else if (noResults) {
+            noResults.style.display = 'none';
+        }
     });
 }
 

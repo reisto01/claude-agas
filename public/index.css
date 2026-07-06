@@ -627,3 +627,7 @@ textarea::placeholder {
 .message:hover .copy-msg-btn {
     display: flex;
 }
+
+.drawer-search { padding: 10px 16px; border-bottom: 1px solid var(--border-color); }
+.drawer-search input { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-primary); font-size: 14px; outline: none; box-sizing: border-box; }
+.drawer-search input:focus { border-color: #D97757; }
