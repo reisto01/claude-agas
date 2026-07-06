@@ -542,7 +542,7 @@ function updateGreeting() {
         icon = '✧';
     }
     
-    greetingElement.textContent = `${timeOfDay}, Agas`;
+    greetingElement.textContent = `${timeOfDay}, Bro`;
     greetingIcon.textContent = icon;
 }
 
