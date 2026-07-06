@@ -1,12 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "echo 'No build required'",
-  "installCommand": "echo 'No install required'",
-  "outputDirectory": "public",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
     }
   ]
 }
