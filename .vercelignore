@@ -1,1 +1,5 @@
 api/
+.python-version
+pyproject.toml
+uv.lock
+server.py
